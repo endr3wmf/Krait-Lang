@@ -27,6 +27,12 @@ class Parser:
             value = self.current().value
             self.advance()
             return NumberLiteral(value)
+        elif self.current().tokentype == TokenType.BOOLEAN:
+            boolean = self.current().value
+            self.advance()
+            boolean = boolean == "true"
+            return BooleanLiteral(boolean)
+
         elif self.current().tokentype == TokenType.LPAREN:
             self.expect(TokenType.LPAREN)
             expression = self.expression()
@@ -43,13 +49,50 @@ class Parser:
             expression = BinaryExpression(left, right, operator)
             left = expression
         return left
-
     def expression(self):
+        return self.logical_or()
+    def arithmetic(self):
         left = self.term()
         while self.current().tokentype == TokenType.PLUS or self.current().tokentype == TokenType.MINUS:
             operator = self.current().tokentype
             self.advance()
             right = self.term()
+            expression = BinaryExpression(left, right, operator)
+            left = expression
+        return left
+    def comparision(self):
+        left = self.arithmetic()
+        while self.current().tokentype == TokenType.EQ or self.current().tokentype == TokenType.NE or self.current().tokentype == TokenType.GE or self.current().tokentype == TokenType.LE or self.current().tokentype == TokenType.LT or self.current().tokentype == TokenType.GT:
+            operator = self.current().tokentype
+            self.advance()
+            right = self.arithmetic()
+            expression = BinaryExpression(left, right, operator)
+            left = expression
+        return left
+    def logical_not(self):
+        if self.current().tokentype == TokenType.NOT:
+            operator = self.current().tokentype
+            self.advance()
+            operand = self.logical_not()
+            expression = UnaryExpression(operator, operand)
+            return expression
+        else:
+            return self.comparision()
+    def logical_and(self):
+        left = self.logical_not()
+        while self.current().tokentype == TokenType.AND:
+            operator = self.current().tokentype
+            self.advance()
+            right = self.logical_not()
+            expression = BinaryExpression(left, right, operator)
+            left = expression
+        return left
+    def logical_or(self):
+        left = self.logical_and()
+        while self.current().tokentype == TokenType.OR:
+            operator = self.current().tokentype
+            self.advance()
+            right = self.logical_and()
             expression = BinaryExpression(left, right, operator)
             left = expression
         return left
@@ -69,6 +112,8 @@ class NumberLiteral(ASTNode):
 class BooleanLiteral(ASTNode):
     def __init__(self, value):
         self.value = value
+    def __repr__(self):
+        return f"BooleanLiteral(value={self.value!r})"
 class StringLiteral(ASTNode):
     def __init__(self, value):
         self.value = value
@@ -147,9 +192,12 @@ class UnaryExpression(ASTNode):
     def __init__(self, operator, operand):
         self.operator = operator
         self.operand = operand
+
+    def __repr__(self):
+        return f"UnaryExpression(operator={self.operator}, operand={self.operand})"
 class Program(ASTNode):
     def __init__(self, statements):
         self.statements = statements
-lexer = Lexer("2 + 3 * 4")
+lexer = Lexer("(not (5 > 3)) and true")
 parser = Parser(lexer.tokenize())
 print(parser.parse())
