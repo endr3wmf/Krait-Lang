@@ -136,6 +136,12 @@ class Lexer:
             elif token == "{":
                 tokens.append(Token(TokenType.LBRACE, "{"))
                 self.advance()
+            elif token == "[":
+                tokens.append(Token(TokenType.LBRACKET, "["))
+                self.advance()
+            elif token == "]":
+                tokens.append(Token(TokenType.RBRACKET, "]"))
+                self.advance()
             else:
                 raise LexerError("Unexpected token '%s'" % token)
         tokens.append(Token(TokenType.EOF, "EOF"))
@@ -177,6 +183,11 @@ class TokenType(enum.Enum):
     RBRACE = enum.auto()
     SEMICOLON = enum.auto()
     EOF = enum.auto()
+    NULL = enum.auto()
+    LBRACKET = enum.auto()
+    RBRACKET = enum.auto()
+    FOR = enum.auto()
+    EXTEND = enum.auto()
 class Token:
     def __init__(self, tokentype, value):
         self.tokentype = tokentype
@@ -207,4 +218,13 @@ keywords = {
     "or": TokenType.OR,
     "not": TokenType.NOT,
     "false": TokenType.BOOLEAN,
+    "Null": TokenType.NULL,
+    "for": TokenType.FOR,
+    "extends": TokenType.EXTEND,
 }
+
+code = """
+x = [1, 2, 3];
+"""
+lexer = Lexer(code)
+print(lexer.tokenize())
