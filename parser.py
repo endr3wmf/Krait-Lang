@@ -1,6 +1,5 @@
 from lexer import *
-class ParserError(Exception):
-    pass
+from Errors import *
 class Parser:
     def __init__(self, tokens):
         self.tokens = tokens
@@ -19,10 +18,7 @@ class Parser:
     def expect(self, tokentype):
         if self.current().tokentype == tokentype:
             return self.advance()
-        raise ParserError(
-            f"Expected {tokentype}, got {self.current().tokentype} "
-            f"({self.current().value}) at position {self.position}"
-        )
+        raise ParserError("Expected '%s'" % tokentype, self.current())
     def is_at_end(self):
         return self.current().tokentype == TokenType.EOF
     def factor(self):
@@ -46,7 +42,11 @@ class Parser:
             self.advance()
 
             result = Identifier(identifier)
-
+        elif self.current().tokentype == TokenType.PLUS or self.current().tokentype == TokenType.MINUS:
+            operator = self.current().tokentype
+            self.advance()
+            operand = self.factor()
+            return UnaryExpression(operator, operand)
         elif self.current().tokentype == TokenType.STRING:
             string = self.current().value
             self.advance()
@@ -67,11 +67,11 @@ class Parser:
                     if self.current().tokentype == TokenType.COMMA:
                         self.advance()
                     elif self.current().tokentype != TokenType.RBRACKET:
-                        raise ParserError("Expected ',' or ']'")
+                        raise ParserError("Expected ',' or ']'", self.current())
                 self.expect(TokenType.RBRACKET)
                 result = ListLiteral(items)
         else:
-            raise ParserError("Unexpected token")
+            raise ParserError(f"Unexpected token '{self.current().value}'", self.current())
         while True:
             if self.current().tokentype == TokenType.DOT:
                 self.expect(TokenType.DOT)
@@ -92,10 +92,10 @@ class Parser:
 
                         if self.current().tokentype == TokenType.COMMA:
                             self.advance()
-                            if self.current().tokentype != TokenType.IDENTIFIER:
-                                raise ParserError("Expected Identifier after comma")
+                            if self.current().tokentype == TokenType.RPAREN:
+                                raise ParserError("Expected argument after ','", self.current())
                         elif self.current().tokentype != TokenType.RPAREN:
-                            raise ParserError("Expected ',' or ')'")
+                            raise ParserError("Expected ',' or ')'", self.current())
 
                 self.expect(TokenType.RPAREN)
                 result = FunctionCall(result, arguments)
@@ -221,9 +221,9 @@ class Parser:
                     if self.current().tokentype == TokenType.COMMA:
                         self.advance()
                         if self.current().tokentype != TokenType.IDENTIFIER:
-                            raise ParserError("Expected parameter after ','")
+                            raise ParserError("Expected parameter after ','", self.current())
                     elif self.current().tokentype != TokenType.RPAREN:
-                        raise ParserError("Expected ',' or ')'")
+                        raise ParserError("Expected ',' or ')'", self.current())
                 self.expect(TokenType.RPAREN)
             body = self.statement()
 
@@ -273,9 +273,9 @@ class Parser:
             methods = []
             while self.current().tokentype != TokenType.RBRACE:
                 if self.is_at_end():
-                    raise ParserError("Expected '}'")
+                    raise ParserError("Expected '}'", self.current())
                 if self.current().tokentype != TokenType.FUNCTION:
-                    raise ParserError("Expected Function declaration inside class")
+                    raise ParserError("Expected Function declaration inside class", self.current())
 
                 methods.append(self.statement())
 
@@ -378,8 +378,6 @@ class MemberExpression(ASTNode):
         self.prop = prop
     def __repr__(self):
         return f"MemberExpression(obj={self.obj!r}, prop={self.prop!r})"
-class SelfExpression(ASTNode):
-    pass
 class ListLiteral(ASTNode):
     def __init__(self, items=None):
         self.items = [] if items is None else items
@@ -441,12 +439,3 @@ class Program(ASTNode):
         self.statements = statements
     def __repr__(self):
         return "Program(statements={})".format(self.statements)
-
-code = """if () {
-    print("Hello");
-}"""
-
-lexer = Lexer(code)
-tokens = lexer.tokenize()
-parser = Parser(tokens)
-print(parser.parse())

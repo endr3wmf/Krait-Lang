@@ -1,19 +1,25 @@
 import enum
+from Errors import LexerError
 
-
-class LexerError(Exception):
-    pass
 
 class Lexer:
     def __init__(self, text):
         self.text = text
         self.position = 0
+        self.line = 1
+        self.column = 1
     def current_char(self):
         if self.position < len(self.text):
             return self.text[self.position]
         else:
             return None
     def advance(self):
+
+        if self.current_char() == "\n":
+            self.line += 1
+            self.column = 1
+        else:
+            self.column += 1
         self.position += 1
     def is_at_end(self):
         return self.position >= len(self.text)
@@ -44,107 +50,108 @@ class Lexer:
                         string += escapes[self.current_char()]
                         self.advance()
                     else:
-                        raise LexerError("Unexpected escape in string")
+                        raise LexerError("Unexpected escape in string", self.line, self.column)
                 else:
                     string += self.current_char()
                     self.advance()
             if self.is_at_end():
-                raise LexerError("Unterminated string literal")
+                raise LexerError("Unterminated string literal", self.line, self.column)
         return string
     def tokenize(self):
         tokens = []
         while not self.is_at_end():
             token = self.current_char()
+            start_line = self.line
+            start_column = self.column
             if token.isdigit():
-                tokens.append(Token(TokenType.INTEGER, self.read_number()))
+                tokens.append(Token(TokenType.INTEGER, self.read_number(), start_line, start_column))
             elif token.isspace():
                 self.skip_whitespace()
             elif token.isalpha() or token == "_":
                 identifier = self.read_identifier()
                 if identifier not in keywords:
-                    tokens.append(Token(TokenType.IDENTIFIER, identifier))
+                    tokens.append(Token(TokenType.IDENTIFIER, identifier,  start_line, start_column))
                 else:
                     type_ = keywords[identifier]
-                    tokens.append(Token(type_, identifier))
+                    tokens.append(Token(type_, identifier,  start_line, start_column))
             elif token == '"':
                 string = self.read_string()
-                tokens.append(Token(TokenType.STRING, string))
-                self.advance()
+                tokens.append(Token(TokenType.STRING, string, start_line, start_column))
             elif token == "=":
                 self.advance()
                 if self.current_char() == "=":
-                    tokens.append(Token(TokenType.EQ, "=="))
+                    tokens.append(Token(TokenType.EQ, "==", start_line, start_column))
                     self.advance()
                 else:
-                    tokens.append(Token(TokenType.ASSIGN, "="))
+                    tokens.append(Token(TokenType.ASSIGN, "=", start_line, start_column))
             elif token == "+":
-                tokens.append(Token(TokenType.PLUS, "+"))
+                tokens.append(Token(TokenType.PLUS, "+", start_line, start_column))
                 self.advance()
             elif token == "-":
-                tokens.append(Token(TokenType.MINUS, "-"))
+                tokens.append(Token(TokenType.MINUS, "-", start_line, start_column))
                 self.advance()
             elif token == "*":
-                tokens.append(Token(TokenType.MULTIPLY, "*"))
+                tokens.append(Token(TokenType.MULTIPLY, "*", start_line, start_column))
                 self.advance()
             elif token == "/":
-                tokens.append(Token(TokenType.DIVIDE, "/"))
+                tokens.append(Token(TokenType.DIVIDE, "/", start_line, start_column))
                 self.advance()
             elif token == "!":
                 self.advance()
                 if self.current_char() == "=":
-                    tokens.append(Token(TokenType.NE, "!="))
+                    tokens.append(Token(TokenType.NE, "!=", start_line, start_column))
                     self.advance()
                 else:
-                    raise LexerError("Unexpected character '!'")
+                    raise LexerError("Unexpected character '!'", start_line, start_column)
 
             elif token == "%":
-                tokens.append(Token(TokenType.MODULO, "%"))
+                tokens.append(Token(TokenType.MODULO, "%", start_line, start_column))
                 self.advance()
             elif token == ">":
                 self.advance()
                 if self.current_char() == "=":
-                    tokens.append(Token(TokenType.GE, ">="))
+                    tokens.append(Token(TokenType.GE, ">=", start_line, start_column))
                     self.advance()
                 else:
-                    tokens.append(Token(TokenType.GT, ">"))
+                    tokens.append(Token(TokenType.GT, ">", start_line, start_column))
 
             elif token == "<":
                 self.advance()
                 if self.current_char() == "=":
-                    tokens.append(Token(TokenType.LE, "<="))
+                    tokens.append(Token(TokenType.LE, "<=", start_line, start_column))
                     self.advance()
                 else:
-                    tokens.append(Token(TokenType.LT, "<"))
+                    tokens.append(Token(TokenType.LT, "<", start_line, start_column))
             elif token == ")":
-                tokens.append(Token(TokenType.RPAREN, ")"))
+                tokens.append(Token(TokenType.RPAREN, ")", start_line, start_column))
                 self.advance()
             elif token == "(":
-                tokens.append(Token(TokenType.LPAREN, "("))
+                tokens.append(Token(TokenType.LPAREN, "(", start_line, start_column))
                 self.advance()
             elif token == ",":
-                tokens.append(Token(TokenType.COMMA, ","))
+                tokens.append(Token(TokenType.COMMA, ",", start_line, start_column))
                 self.advance()
             elif token == ".":
-                tokens.append(Token(TokenType.DOT, "."))
+                tokens.append(Token(TokenType.DOT, ".", start_line, start_column))
                 self.advance()
             elif token == ";":
-                tokens.append(Token(TokenType.SEMICOLON, ";"))
+                tokens.append(Token(TokenType.SEMICOLON, ";", start_line, start_column))
                 self.advance()
             elif token == "}":
-                tokens.append(Token(TokenType.RBRACE, "}"))
+                tokens.append(Token(TokenType.RBRACE, "}", start_line, start_column))
                 self.advance()
             elif token == "{":
-                tokens.append(Token(TokenType.LBRACE, "{"))
+                tokens.append(Token(TokenType.LBRACE, "{", start_line, start_column))
                 self.advance()
             elif token == "[":
-                tokens.append(Token(TokenType.LBRACKET, "["))
+                tokens.append(Token(TokenType.LBRACKET, "[", start_line, start_column))
                 self.advance()
             elif token == "]":
-                tokens.append(Token(TokenType.RBRACKET, "]"))
+                tokens.append(Token(TokenType.RBRACKET, "]", start_line, start_column))
                 self.advance()
             else:
-                raise LexerError("Unexpected token '%s'" % token)
-        tokens.append(Token(TokenType.EOF, "EOF"))
+                raise LexerError("Unexpected token '%s'" % token, start_line, start_column)
+        tokens.append(Token(TokenType.EOF, "EOF", start_line , start_column))
 
 
         return tokens
@@ -189,11 +196,13 @@ class TokenType(enum.Enum):
     FOR = enum.auto()
     EXTEND = enum.auto()
 class Token:
-    def __init__(self, tokentype, value):
+    def __init__(self, tokentype, value, line, column):
         self.tokentype = tokentype
         self.value = value
+        self.line = line
+        self.column = column
     def __repr__(self):
-        return f"Token({self.tokentype.name}, {self.value!r})"
+        return f"Token({self.tokentype.name}, {self.value!r}, {self.line!r}, {self.column!r})"
 
 booleans = {
     "true": True,
@@ -223,8 +232,4 @@ keywords = {
     "extends": TokenType.EXTEND,
 }
 
-code = """
-x = [1, 2, 3];
-"""
-lexer = Lexer(code)
-print(lexer.tokenize())
+
